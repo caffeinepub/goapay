@@ -11,12 +11,16 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useGame } from "@/context/GameContext";
+import { useActor } from "@/hooks/useActor";
+import { useInternetIdentity } from "@/hooks/useInternetIdentity";
 import { useIsAdmin } from "@/hooks/useQueries";
 import {
   ArrowLeft,
   CheckCircle,
   Crown,
   Loader2,
+  LogIn,
+  ShieldCheck,
   TrendingUp,
   Users,
   Wallet,
@@ -630,24 +634,116 @@ function StatisticsTab() {
   );
 }
 
+function AdminAccessGate({ onBack }: { onBack: () => void }) {
+  const { login, loginStatus, identity } = useInternetIdentity();
+  const { actor } = useActor();
+  const [claiming, setClaiming] = useState(false);
+  const isLoggedIn = loginStatus === "success" && !!identity;
+
+  const claimAdmin = async () => {
+    if (!actor) return;
+    setClaiming(true);
+    try {
+      const success = await actor.claimFirstAdmin();
+      if (success) {
+        toast.success("Admin access granted! Refreshing...");
+        setTimeout(() => window.location.reload(), 1000);
+      } else {
+        toast.error(
+          "Admin is already assigned. If you are the admin, try refreshing the page.",
+        );
+      }
+    } catch {
+      toast.error("Could not claim admin access. Try refreshing.");
+    } finally {
+      setClaiming(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="card-surface border border-gold/20 rounded-2xl p-8 max-w-sm w-full mx-4 space-y-6 text-center"
+      >
+        <div className="w-14 h-14 rounded-full bg-gold/20 flex items-center justify-center mx-auto">
+          <Crown className="w-7 h-7 text-gold" />
+        </div>
+        <div>
+          <h2 className="font-display font-bold text-xl text-foreground mb-2">
+            Admin Access
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            {isLoggedIn
+              ? "Claim admin access for your account to manage the Goapay platform."
+              : "Login with Internet Identity to access the admin panel."}
+          </p>
+        </div>
+
+        {isLoggedIn ? (
+          <Button
+            onClick={claimAdmin}
+            disabled={claiming}
+            className="w-full bg-gold text-primary-foreground hover:bg-gold-light font-semibold gold-glow-sm"
+            data-ocid="admin.primary_button"
+          >
+            {claiming ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Claiming...
+              </>
+            ) : (
+              <>
+                <ShieldCheck className="w-4 h-4 mr-2" /> Claim Admin Access
+              </>
+            )}
+          </Button>
+        ) : (
+          <Button
+            onClick={login}
+            disabled={loginStatus === "logging-in"}
+            className="w-full bg-gold text-primary-foreground hover:bg-gold-light font-semibold"
+            data-ocid="login.primary_button"
+          >
+            {loginStatus === "logging-in" ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Connecting...
+              </>
+            ) : (
+              <>
+                <LogIn className="w-4 h-4 mr-2" /> Login with Internet Identity
+              </>
+            )}
+          </Button>
+        )}
+
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onBack}
+          className="text-muted-foreground"
+        >
+          <ArrowLeft className="w-4 h-4 mr-2" /> Back to Game
+        </Button>
+      </motion.div>
+    </div>
+  );
+}
+
 export default function AdminDashboard({ onBack }: AdminDashboardProps) {
-  const { data: isAdmin } = useIsAdmin();
+  const { data: isAdmin, isLoading } = useIsAdmin();
   const { state } = useGame();
 
-  if (!isAdmin) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center space-y-3">
-          <Crown className="w-12 h-12 text-gold/40 mx-auto" />
-          <p className="text-muted-foreground">
-            You don&apos;t have admin access.
-          </p>
-          <Button variant="ghost" onClick={onBack}>
-            <ArrowLeft className="w-4 h-4 mr-2" /> Back to Game
-          </Button>
-        </div>
+        <Loader2 className="w-8 h-8 text-gold animate-spin" />
       </div>
     );
+  }
+
+  if (!isAdmin) {
+    return <AdminAccessGate onBack={onBack} />;
   }
 
   return (

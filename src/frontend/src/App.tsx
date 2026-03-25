@@ -11,7 +11,6 @@ import RecentBets from "@/components/RecentBets";
 import RecentWinners from "@/components/RecentWinners";
 import { Toaster } from "@/components/ui/sonner";
 import { GameProvider } from "@/context/GameContext";
-import { useIsAdmin } from "@/hooks/useQueries";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 
@@ -21,8 +20,12 @@ function GameLayout() {
   const gameRef = useRef<HTMLDivElement>(null);
   const howToRef = useRef<HTMLDivElement>(null);
   const featuresRef = useRef<HTMLDivElement>(null);
-  const { data: isAdmin } = useIsAdmin();
-  const [showAdmin, setShowAdmin] = useState(false);
+
+  // Check URL param for direct admin access
+  const urlParams = new URLSearchParams(window.location.search);
+  const adminParam = urlParams.has("admin");
+
+  const [showAdmin, setShowAdmin] = useState(adminParam);
 
   const scrollTo = (section: string) => {
     const map: Record<string, React.RefObject<HTMLDivElement | null>> = {
@@ -36,7 +39,7 @@ function GameLayout() {
     });
   };
 
-  if (showAdmin && isAdmin) {
+  if (showAdmin) {
     return <AdminDashboard onBack={() => setShowAdmin(false)} />;
   }
 
