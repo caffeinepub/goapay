@@ -636,9 +636,9 @@ function StatisticsTab() {
 
 function AdminAccessGate({ onBack }: { onBack: () => void }) {
   const { login, loginStatus, identity } = useInternetIdentity();
-  const { actor } = useActor();
+  const { actor, isFetching: actorFetching } = useActor();
   const [claiming, setClaiming] = useState(false);
-  const isLoggedIn = loginStatus === "success" && !!identity;
+  const isLoggedIn = !!identity;
 
   const claimAdmin = async () => {
     if (!actor) return;
@@ -676,7 +676,9 @@ function AdminAccessGate({ onBack }: { onBack: () => void }) {
           </h2>
           <p className="text-sm text-muted-foreground">
             {isLoggedIn
-              ? "Claim admin access for your account to manage the Goapay platform."
+              ? actorFetching
+                ? "Initializing secure session..."
+                : "Claim admin access for your account to manage the Goapay platform."
               : "Login with Internet Identity to access the admin panel."}
           </p>
         </div>
@@ -684,13 +686,18 @@ function AdminAccessGate({ onBack }: { onBack: () => void }) {
         {isLoggedIn ? (
           <Button
             onClick={claimAdmin}
-            disabled={claiming}
+            disabled={claiming || actorFetching}
             className="w-full bg-gold text-primary-foreground hover:bg-gold-light font-semibold gold-glow-sm"
             data-ocid="admin.primary_button"
           >
             {claiming ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Claiming...
+              </>
+            ) : actorFetching ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />{" "}
+                Initializing...
               </>
             ) : (
               <>
@@ -732,9 +739,10 @@ function AdminAccessGate({ onBack }: { onBack: () => void }) {
 
 export default function AdminDashboard({ onBack }: AdminDashboardProps) {
   const { data: isAdmin, isLoading } = useIsAdmin();
+  const { isFetching: actorFetching } = useActor();
   const { state } = useGame();
 
-  if (isLoading) {
+  if (isLoading || actorFetching) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="w-8 h-8 text-gold animate-spin" />
